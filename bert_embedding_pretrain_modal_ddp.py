@@ -201,7 +201,7 @@ def main(cfg):
             loss = sum(x ** 2 for x in loss_list)
             # loss=loss1+loss2
             accelerator.backward(loss)
-            # print_gradients(model)
+            print_gradients(model)
             optimizer.step()
 
             pbar.set_description(
@@ -211,9 +211,9 @@ def main(cfg):
 
     accelerator.wait_for_everyone()
     unwrap_model = accelerator.unwrap_model(model)
-    save_dir = f'ckpts/{cfg.dataset}/{cfg.llm}'
+    save_dir = f'ckpts/ablation/{cfg.dataset}/{cfg.llm}'
     os.makedirs(save_dir, exist_ok=True)
-    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'modal_cross.pth'))
+    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'no_in_cross_loss.pth'))
     pass
 
 
@@ -279,7 +279,7 @@ def log_results(model, logloss, auc):
         " "
     ]
 
-    file_path = f'./baseline_results/{cfg.dataset}_{model_name}.csv'
+    file_path = f'./baseline_results/ablation/{cfg.dataset}_{model_name}.csv'
     headers = ["Timestamp", "Model Name", "LLM", "Backbone", "Epochs", "Batch Size",
                "Learning Rate", "Dropout", "temp", 'lr1', 'lr2', 'optimizer', "AUC", "Logloss", "describe", ]
 

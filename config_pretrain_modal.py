@@ -17,7 +17,7 @@ def create_parser():
     # mixed precision
     parser.add_argument("--mixed_precision", type=str, default="bf16")
 
-    parser.add_argument('--dataset', default='bookcrossing', type=str, help='dataset name')
+    parser.add_argument('--dataset', default='movielens', type=str, help='dataset name')
     parser.add_argument('--backbone', default='DCNv2', type=str, help='')
     parser.add_argument("--llm", type=str, default='distilbert', help='language model')
     parser.add_argument("--describe", type=str, default='设备3')
@@ -26,7 +26,7 @@ def create_parser():
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--embedding_dim", type=int, default=32)
 
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--delta", type=int, default=0)
 

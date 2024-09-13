@@ -15,7 +15,7 @@ def create_parser():
     parser.add_argument("--lora", type=str2bool, default=False, help="Whether use LoRA")
     parser.add_argument("--mixed_precision", type=str, default="bf16", choices=["no", "fp16", "bf16"],
                         help="Mixed precision training mode")
-    parser.add_argument("--dataset", type=str, default="bookcrossing", choices=["movielens", "bookcrossing", "amazon"],
+    parser.add_argument("--dataset", type=str, default="movielens", choices=["movielens", "bookcrossing", "amazon"],
                         help="Dataset name")
     parser.add_argument("--backbone", type=str, default="widedeep", help="Backbone model architecture")
     parser.add_argument("--llm", type=str, default="distilbert",

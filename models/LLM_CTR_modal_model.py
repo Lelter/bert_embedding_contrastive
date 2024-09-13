@@ -228,12 +228,12 @@ class bertCTRModel(nn.Module):
         # Compute losses
         domain_inner_loss = self.domain_inner_loss(text_features_list1, text_features_list2)
         domain_cross_loss = self.domain_cross_loss_once(text_features_list1)
-        domain_in_cross_regulation_loss = self.domain_in_cross_regulation_loss(text_features_list1)
+        # domain_in_cross_regulation_loss = self.domain_in_cross_regulation_loss(text_features_list1)
         # Compute logits
         modal_align_loss = self.rec_encoder(text_features_list1, batch['rec_data'])
         # Compute total loss
         # total_loss = domain_inner_loss*domain_inner_loss+domain_in_cross_regulation_loss* domain_in_cross_regulation_loss
-        total_loss = [domain_inner_loss, domain_in_cross_regulation_loss, modal_align_loss, domain_cross_loss]
+        total_loss = [ domain_inner_loss,domain_cross_loss,modal_align_loss]
         return total_loss
 
     def get_embedding(self, batch):

@@ -219,6 +219,8 @@ class RecEncoder_DCNv2(BaseModel):
                                                init_std=init_std, seed=seed, task=task, device=device, gpus=gpus)
         self.out = None
         self.linear_model = None
+        # self.embedding_dict=None
+        # self.projection=nn.Linear(32*6,32)
         # self.dnn_hidden_units = dnn_hidden_units
         # self.cross_num = cross_num
         # self.dnn = DNN(self.compute_input_dim(sparse_all_feature_columns), dnn_hidden_units,
@@ -249,6 +251,9 @@ class RecEncoder_DCNv2(BaseModel):
 
         text_embedding = torch.cat(text_embedding_list, dim=1)
         sparse_embedding = torch.cat(sparse_embedding_list, dim=1)
+
+        # text_embedding=self.projection(text_embedding)
+        # sparse_embedding=self.projection(sparse_embedding)
 
         return text_embedding,sparse_embedding
 
