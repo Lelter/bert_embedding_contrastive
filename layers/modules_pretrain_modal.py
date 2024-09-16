@@ -69,6 +69,10 @@ class TextEncoder(nn.Module):
             output = self.model(input_ids=input_ids[:, start_idx:end_idx],
                                 attention_mask=attention_mask[:, start_idx:end_idx])
             last_hidden_state = output.last_hidden_state
+            # last_token_pool = self.last_token_pool(last_hidden_state, attention_mask[:, start_idx:end_idx])
+            #用平均值
+            # last_hidden_state_list.append(self.linear(last_token_pool))
+
             last_hidden_state_list.append(self.linear(last_hidden_state[:, self.target_token_idx, :]))
         return last_hidden_state_list
         # output = self.model(input_ids=input_ids, attention_mask=attention_mask)

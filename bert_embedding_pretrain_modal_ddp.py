@@ -191,7 +191,7 @@ def main(cfg):
     for epoch in range(cfg.epochs):
         model.train()
         pbar = tqdm(enumerate(train_loader), total=len(train_loader), disable=(not accelerator.is_local_main_process),
-                    ncols=200)
+                    ncols=100)
         train_loss_list = []
         for batch_idx, (batch) in pbar:
             optimizer.zero_grad()
@@ -201,11 +201,11 @@ def main(cfg):
             loss = sum(x ** 2 for x in loss_list)
             # loss=loss1+loss2
             accelerator.backward(loss)
-            print_gradients(model)
+            # print_gradients(model)
             optimizer.step()
 
             pbar.set_description(
-                f"epoch {epoch + 1} :constraint loss {loss_list[0].item():.5f},modal loss {loss_list[-2].item():.5f}"
+                f"epoch {epoch + 1} :constraint loss {loss_list[0].item():.5f}"#,modal loss {loss_list[-1].item():.5f}
             )
             train_loss_list.append(loss)
 
@@ -213,7 +213,7 @@ def main(cfg):
     unwrap_model = accelerator.unwrap_model(model)
     save_dir = f'ckpts/ablation/{cfg.dataset}/{cfg.llm}'
     os.makedirs(save_dir, exist_ok=True)
-    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'no_in_cross_loss.pth'))
+    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'final.pth'))
     pass
 
 
@@ -298,7 +298,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logger = get_logger(__name__)
     set_seed(cfg.seed)
-    logger.debug("This log will be printed in the main process only")
     accelerator.print(f'device {str(accelerator.device)} is used!')
     main(cfg)
     # CUDA_VISIBLE_DEVICES=1,0 accelerate launch --main_process_port 41011 --num_processes 2 bert_embedding_ddp.py

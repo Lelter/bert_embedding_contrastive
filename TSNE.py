@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, pipeline
 # from model.MaskCTR_ddp import MaskCTR
 from utils import EarlyStopping
 
@@ -144,7 +144,23 @@ def main(cfg):
                          struct_feature_num=total_feature_num,
                          )
     # optimizer = optim.Adagrad(model.parameters(), lr=cfg.lr,eps=1e-4)
-    model.load_state_dict(torch.load(f'ckpts/movielens/distilbert/modal_cross.pth'), strict=False)
+    ablation_name = 'all'
+    ablation_map = {
+        'no_cross_loss': 'no_cross',
+        'no_in_cross_loss': 'no_in_cross_loss',
+        'no_in_loss': 'no_in_loss',
+        'no_modal': 'no_modal',
+        'all': 'all'
+    }
+
+    # 获取模型名称，若不存在则返回默认值'all'
+    model_name = ablation_map.get(ablation_name, 'all')
+
+    # 定义模型路径
+    model_path = f'ckpts/ablation/movielens/distilbert/{model_name}.pth'
+
+    # 加载模型参数，关闭严格模式以防止某些键不匹配的错误
+    model.load_state_dict(torch.load(model_path), strict=False)
     no_grad_params = {'text_encoder.model.pooler.dense.weight',
                       'text_encoder.model.pooler.dense.bias'}  # 冻结 accelerate需要有梯度
     for name, param in model.named_parameters():
@@ -157,13 +173,13 @@ def main(cfg):
         model.eval()  # 模型进入评估模式
         text_embeddings = []
         rec_embeddings = []
-        labels=[]
+        labels = []
 
         with torch.no_grad():
             for batch in dataloader:
                 labels.append(batch['label'].cpu().numpy())
                 # 从模型中提取嵌入或中间层输出
-                text_embedding,rec_embedding = model.get_embedding(batch)
+                text_embedding, rec_embedding = model.get_embedding(batch)
                 text_embeddings.append(text_embedding.cpu().numpy())
                 rec_embeddings.append(rec_embedding.cpu().numpy())
 
@@ -171,9 +187,9 @@ def main(cfg):
         all_text_features = np.vstack(text_embeddings)
         all_rec_features = np.vstack(rec_embeddings)
         labels = np.concatenate(labels)
-        return all_text_features, all_rec_features,labels
+        return all_text_features, all_rec_features, labels
 
-    def tsne_visualization(all_text_features, all_rec_features,labels,num_classes=2,perplexity=100):
+    def tsne_visualization(all_text_features, all_rec_features, labels, num_classes=2, perplexity=50):
         """
         进行 t-SNE 降维和可视化，将文本特征和推荐特征画在同一张图上，颜色区分特征类型（文本/推荐）。
 
@@ -212,15 +228,15 @@ def main(cfg):
         sns.scatterplot(x=features_2d[labels == 1, 0], y=features_2d[labels == 1, 1],
                         color=palette[1], marker='s', label='Rec Features', alpha=0.8)
 
-        plt.title("t-SNE Visualization of Text and Recommendation Features")
+        plt.title(f"t-SNE {ablation_name}")
         plt.xlabel("t-SNE Component 1")
         plt.ylabel("t-SNE Component 2")
         plt.legend()
         plt.show()
 
     # 调用函数
-    all_text_features, all_rec_features,labels = extract_features(model, train_loader, accelerator.device)
-    tsne_visualization(all_text_features, all_rec_features,labels, num_classes=2)  # 假设有2个类别
+    all_text_features, all_rec_features, labels = extract_features(model, train_loader, accelerator.device)
+    tsne_visualization(all_text_features, all_rec_features, labels, num_classes=2)  # 假设有2个类别
 
 
 if __name__ == '__main__':

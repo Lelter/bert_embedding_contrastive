@@ -9,10 +9,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3,4,0"
 
 # Argument parsing
 parser = argparse.ArgumentParser(description="Training script with various hyperparameters")
-parser.add_argument('--dataset', type=str, default='bookcrossing', choices=['movielens', 'bookcrossing', 'amazon'])
+parser.add_argument('--dataset', type=str, default='movielens', choices=['movielens', 'bookcrossing', 'amazon'])
 parser.add_argument('--backbone', type=str, default='AutoInt',
                     choices=['DeepFM', 'AutoInt', 'DCNv2', 'DCN', 'xDeepFM', 'PNN', 'widedeep'])
-parser.add_argument('--llm', type=str, default='distilbert', choices=['bert', 'tiny-bert', 'roberta', 'roberta-large'])
+parser.add_argument('--llm', type=str, default='distilbert', choices=['bert', 'distilbert', 'roberta', 'roberta-large'])
 parser.add_argument('--epochs', type=int, default=20)
 args = parser.parse_args()
 
@@ -25,11 +25,11 @@ hyperparameters = {
     'optimizer': ['Adam'],
     # 'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     # 'temperature': [0.3],
-    'lr1': [1e-3],
+    'lr1': [5e-3],
     'lr2': [1e-4],
     'batch_size': [256],
     'epochs': [args.epochs],
-    'dataset': ['movielens', 'bookcrossing', 'amazon'],
+    'dataset': ['movielens'],
     'backbone': ['DeepFM', 'AutoInt', 'DCNv2','DCN', 'xDeepFM', 'PNN', 'widedeep'],#
     'trainable': ['True'],
     'lora': ['False']

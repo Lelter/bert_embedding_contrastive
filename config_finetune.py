@@ -17,7 +17,7 @@ def create_parser():
                         help="Mixed precision training mode")
     parser.add_argument("--dataset", type=str, default="movielens", choices=["movielens", "bookcrossing", "amazon"],
                         help="Dataset name")
-    parser.add_argument("--backbone", type=str, default="widedeep", help="Backbone model architecture")
+    parser.add_argument("--backbone", type=str, default="DCNv2", help="Backbone model architecture")
     parser.add_argument("--llm", type=str, default="distilbert",
                         choices=["distilbert", "bert", "roberta", "roberta-large", "SFR"], help="Language model to use")
     parser.add_argument("--describe", type=str, default="设备3", help="Description of the experiment")
@@ -30,7 +30,7 @@ def create_parser():
     parser.add_argument("--delta", type=float, default=0, help="Minimum change to qualify as improvement")
     parser.add_argument("--dropout", type=float, default=0.0, help="Dropout rate")
 
-    parser.add_argument("--lr1", type=float, default=1e-3, help="Learning rate for optimizer 1")
+    parser.add_argument("--lr1", type=float, default=5e-3, help="Learning rate for optimizer 1")
     parser.add_argument("--lr2", type=float, default=1e-4, help="Learning rate for optimizer 2")
     parser.add_argument("--weight_decay", type=float, default=1e-3, help="Weight decay for regularization")
     parser.add_argument("--num_workers", type=int, default=8, help="Number of workers for data loading")

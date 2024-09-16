@@ -17,24 +17,24 @@ def create_parser():
     # mixed precision
     parser.add_argument("--mixed_precision", type=str, default="bf16")
 
-    parser.add_argument('--dataset', default='movielens', type=str, help='dataset name')
+    parser.add_argument('--dataset', default='bookcrossing', type=str, help='dataset name')
     parser.add_argument('--backbone', default='DCNv2', type=str, help='')
     parser.add_argument("--llm", type=str, default='distilbert', help='language model')
     parser.add_argument("--describe", type=str, default='设备3')
     parser.add_argument("--optimizer", type=str, default='Adam')
     # temperature
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--embedding_dim", type=int, default=32)
 
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--delta", type=int, default=0)
 
-    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--lr1", type=float, default=1e-3)
     parser.add_argument("--lr2", type=float, default=1e-4)
-    parser.add_argument("--t", type=float, default=0.3)
+    parser.add_argument("--t", type=float, default=0.7)
     parser.add_argument("--step_size", type=float, default=3)
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--weight_decay", type=float, default=1e-3)

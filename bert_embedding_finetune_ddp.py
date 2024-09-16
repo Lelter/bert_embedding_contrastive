@@ -179,7 +179,7 @@ def main(cfg):
 
     # ======================================================================
     # initialize accelerator and auto move data/model to accelerator.device
-    model.load_state_dict(torch.load(f'ckpts/{cfg.dataset}/{cfg.llm}/modal_cross.pth'), strict=False)
+    model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final.pth'), strict=False)
     no_grad_params = {'text_encoder.model.pooler.dense.weight',
                       'text_encoder.model.pooler.dense.bias'}  # 冻结 accelerate需要有梯度
     for name, param in model.named_parameters():
@@ -194,7 +194,7 @@ def main(cfg):
     for epoch in range(cfg.epochs):
         model.train()
         pbar = tqdm(enumerate(train_loader), total=len(train_loader), disable=(not accelerator.is_local_main_process),
-                    ncols=200)
+                    ncols=100)
         train_loss_list = []
         for batch_idx, (batch) in pbar:
             optimizer.zero_grad()

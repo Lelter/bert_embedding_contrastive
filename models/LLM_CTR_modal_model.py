@@ -147,7 +147,6 @@ class bertCTRModel(nn.Module):
         return all_loss
 
     def domain_cross_loss_once(self, text_features_list):
-        device = text_features_list[0].device
         embeddings = text_features_list
         batch_size = embeddings[0].shape[0]
 
@@ -168,7 +167,7 @@ class bertCTRModel(nn.Module):
             neg_dist_sum = neg_distances[i].sum(dim=0)  # 计算每列负样本距离和
             pos_dist_sum = pos_dist_upper.sum()
             infoNCE = torch.log(pos_dist_sum / (pos_dist_sum + neg_dist_sum))
-            positive_loss += infoNCE.sum() / (batch_size * (batch_size - 1) / 2)  # 除以正样本对数量
+            positive_loss += infoNCE.sum()  # 除以正样本对数量
 
         all_loss = -positive_loss / len(embeddings)
         return all_loss
@@ -226,19 +225,19 @@ class bertCTRModel(nn.Module):
         )
 
         # Compute losses
-        domain_inner_loss = self.domain_inner_loss(text_features_list1, text_features_list2)
-        domain_cross_loss = self.domain_cross_loss_once(text_features_list1)
-        # domain_in_cross_regulation_loss = self.domain_in_cross_regulation_loss(text_features_list1)
+        domain_inner_loss = self.domain_inner_loss(text_features_list1, text_features_list2)  # instance
+        # domain_cross_loss = self.domain_cross_loss_once(text_features_list1)
+        domain_in_cross_regulation_loss = self.domain_in_cross_regulation_loss(text_features_list1)  # domain
         # Compute logits
-        modal_align_loss = self.rec_encoder(text_features_list1, batch['rec_data'])
+        modal_align_loss = self.rec_encoder(text_features_list1, batch['rec_data'])  # modal
         # Compute total loss
         # total_loss = domain_inner_loss*domain_inner_loss+domain_in_cross_regulation_loss* domain_in_cross_regulation_loss
-        total_loss = [ domain_inner_loss,domain_cross_loss,modal_align_loss]
+        total_loss = [domain_inner_loss, domain_in_cross_regulation_loss, modal_align_loss]
         return total_loss
 
     def get_embedding(self, batch):
         text_features_list = self.text_encoder(
             input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
         )
-        text_embedding,rec_embedding=self.rec_encoder.get_embedding(text_features_list,batch['rec_data'])
-        return text_embedding,rec_embedding
+        text_embedding, rec_embedding = self.rec_encoder.get_embedding(text_features_list, batch['rec_data'])
+        return text_embedding, rec_embedding
