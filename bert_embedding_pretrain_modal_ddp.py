@@ -11,23 +11,23 @@ from models.LLM_CTR_modal_model import bertCTRModel
 from preprocessing.inputs import SparseFeat
 
 warnings.filterwarnings("ignore")
+import datetime
+import json
+import logging
+
 import numpy as np
 import pandas as pd
 import torch
+from accelerate import Accelerator
+from accelerate.logging import get_logger
+from accelerate.utils import set_seed
 from sklearn.metrics import log_loss, roc_auc_score
-
-from transformers import AutoTokenizer
+from torch.utils.data import DataLoader
 from tqdm import tqdm
+from transformers import AutoTokenizer
+
 # from model.MaskCTR_ddp import MaskCTR
 from utils import EarlyStopping
-
-from torch.utils.data import DataLoader
-from accelerate import Accelerator
-from accelerate.utils import set_seed
-import datetime
-import json
-from accelerate.logging import get_logger
-import logging
 
 
 def process_struct_data(data_source, train, val, test, data):
@@ -192,30 +192,25 @@ def main(cfg):
         model.train()
         pbar = tqdm(enumerate(train_loader), total=len(train_loader), disable=(not accelerator.is_local_main_process),
                     ncols=100)
-        train_loss_list = []
-        for batch_idx, (batch) in pbar:
+        train_loss = 0.0
+        for batch_idx, batch in pbar:
             optimizer.zero_grad()
             loss_list = model(batch, "train")
-            # focalLoss=FocalLoss()
-            # loss1 = focalLoss(output, label)
             loss = sum(x ** 2 for x in loss_list)
-            # loss=loss1+loss2
             accelerator.backward(loss)
-            # print_gradients(model)
             optimizer.step()
 
+            train_loss += loss.item()
             pbar.set_description(
-                f"epoch {epoch + 1} :constraint loss {loss_list[0].item():.5f}"#,modal loss {loss_list[-1].item():.5f}
+                f"轮次 {epoch + 1}: 约束损失 {loss_list[0].item():.5f}"
             )
-            train_loss_list.append(loss)
-
+        avg_train_loss = train_loss / len(train_loader)
+        logger.info(f"轮次 {epoch + 1} 平均训练损失: {avg_train_loss:.5f}")
     accelerator.wait_for_everyone()
     unwrap_model = accelerator.unwrap_model(model)
     save_dir = f'ckpts/ablation/{cfg.dataset}/{cfg.llm}'
     os.makedirs(save_dir, exist_ok=True)
     torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'final.pth'))
-    pass
-
 
 def validate(val_loader, model):
     model.eval()
@@ -224,22 +219,27 @@ def validate(val_loader, model):
     with torch.no_grad():
         for batch in val_loader:
             batch = {key: value.to(accelerator.device) for key, value in batch.items()}
-
+            
             label = batch['label'].float()
             output = model(batch, "test")[0].squeeze(1)
+            
+            label_list.append(label)
+            pres_list.append(output)
 
-            label_list.append(label.cpu().numpy())
-            pres_list.append(output.cpu().numpy())
-
-    label_list = np.concatenate(label_list)
-    pres_list = np.concatenate(pres_list)
-    pres_list = np.expand_dims(pres_list, axis=1)
-    label_list = np.expand_dims(label_list, axis=1)
-    logloss = round(log_loss(label_list, pres_list), 4)
-    auc = round(roc_auc_score(label_list, pres_list), 4)
+    label_tensor = torch.cat(label_list)
+    pres_tensor = torch.cat(pres_list)
+    
+    label_numpy = label_tensor.cpu().numpy()
+    pres_numpy = pres_tensor.cpu().numpy()
+    
+    label_numpy = np.expand_dims(label_numpy, axis=1)
+    pres_numpy = np.expand_dims(pres_numpy, axis=1)
+    
+    logloss = round(log_loss(label_numpy, pres_numpy), 4)
+    auc = round(roc_auc_score(label_numpy, pres_numpy), 4)
 
     if accelerator.is_local_main_process:
-        print(f"Val LogLoss: {logloss}, Val AUC: {auc}")
+        logger.info(f"验证 LogLoss: {logloss}, 验证 AUC: {auc}")
 
     return logloss, auc
 
@@ -248,23 +248,26 @@ def test(test_loader, model):
     model.eval()
     label_list, pres_list = [], []
 
+    with torch.no_grad():
+        for batch in test_loader:
+            batch = {key: value.to(accelerator.device) for key, value in batch.items()}
+            label = batch['label'].float()
+            output = model(batch, "test")[0].squeeze(1)
+            
+            label_list.append(label)
+            pres_list.append(output)
+
+    label_tensor = torch.cat(label_list)
+    pres_tensor = torch.cat(pres_list)
+    
+    label_numpy = label_tensor.cpu().numpy()
+    pres_numpy = pres_tensor.cpu().numpy()
+    
+    logloss = round(log_loss(label_numpy, pres_numpy), 6)
+    auc = round(roc_auc_score(label_numpy, pres_numpy), 6)
+
     if accelerator.is_local_main_process:
-        with torch.no_grad():
-            for batch in test_loader:
-                batch = {key: value.to(accelerator.device) for key, value in batch.items()}
-                label = batch['label'].float()
-                output = model(batch, "test")[0].squeeze(1)
-
-                label_list.append(label.cpu().numpy())
-                pres_list.append(output.cpu().numpy())
-
-        label_list = np.concatenate(label_list)
-        pres_list = np.concatenate(pres_list)
-
-        logloss = round(log_loss(label_list, pres_list), 6)
-        auc = round(roc_auc_score(label_list, pres_list), 6)
-
-        print(f"Test LogLoss: {logloss}, Test AUC: {auc}")
+        logger.info(f"测试 LogLoss: {logloss}, 测试 AUC: {auc}")
         log_results(model, logloss, auc)
 
     return logloss, auc
@@ -272,23 +275,37 @@ def test(test_loader, model):
 
 def log_results(model, logloss, auc):
     model_name = model.__class__.__name__
-    writer_text = [
-        str(datetime.datetime.now()), model_name, str(cfg.llm), str(cfg.backbone),
-        str(cfg.epochs), str(cfg.batch_size), str(cfg.lr),
-        str(cfg.dropout), str(cfg.trainable), str(cfg.t), str(cfg.lr1), str(cfg.lr2), str(cfg.optimizer), auc, logloss,
-        " "
-    ]
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    result_data = {
+        "时间戳": current_time,
+        "模型名称": model_name,
+        "LLM": cfg.llm,
+        "骨干网络": cfg.backbone,
+        "训练轮数": cfg.epochs,
+        "批次大小": cfg.batch_size,
+        "学习率": cfg.lr,
+        "Dropout": cfg.dropout,
+        "可训练": cfg.trainable,
+        "温度": cfg.t,
+        "学习率1": cfg.lr1,
+        "学习率2": cfg.lr2,
+        "优化器": cfg.optimizer,
+        "AUC": auc,
+        "LogLoss": logloss,
+        "描述": ""
+    }
 
     file_path = f'./baseline_results/ablation/{cfg.dataset}_{model_name}.csv'
-    headers = ["Timestamp", "Model Name", "LLM", "Backbone", "Epochs", "Batch Size",
-               "Learning Rate", "Dropout", "temp", 'lr1', 'lr2', 'optimizer', "AUC", "Logloss", "describe", ]
-
-    file_exists = os.path.isfile(file_path)
-    with open(file_path, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(headers)
-        writer.writerow(writer_text)
+    
+    df = pd.DataFrame([result_data])
+    
+    if not os.path.isfile(file_path):
+        df.to_csv(file_path, index=False, mode='w')
+    else:
+        df.to_csv(file_path, index=False, mode='a', header=False)
+    
+    logger.info(f"结果已保存到 {file_path}")
 
 
 if __name__ == '__main__':

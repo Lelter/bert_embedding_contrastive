@@ -314,9 +314,9 @@ class RecEncoder_DCNv2(BaseModel):
         sparse_embedding = torch.cat(sparse_embedding_list, dim=1)
 
         # Calculate cosine similarity efficiently
-        text_norm = F.normalize(text_embedding, p=2, dim=1)
-        sparse_norm = F.normalize(sparse_embedding, p=2, dim=1)
-        similarity_matrix = torch.mm(text_norm, sparse_norm.t())
+        # text_norm = F.normalize(text_embedding, p=2, dim=1)
+        # sparse_norm = F.normalize(sparse_embedding, p=2, dim=1)
+        similarity_matrix = torch.mm(text_embedding, sparse_embedding.t())
 
         # Get positive and negative samples
         positive_similarity = similarity_matrix.diag()
@@ -338,7 +338,7 @@ class RecEncoder_DCNv2(BaseModel):
         positive_similarity = torch.exp(positive_similarity / temperature)
         negative_similarity = torch.sum(torch.exp(negative_similarity / temperature), dim=1)
 
-        loss = -torch.log(positive_similarity / (positive_similarity + negative_similarity))
+        loss = -torch.log(positive_similarity / ( negative_similarity))
         return loss.mean()
 
     def forward(self, text_embedding_list, dense_inputs):

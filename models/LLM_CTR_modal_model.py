@@ -4,8 +4,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from layers.modules_pretrain_modal import TextEncoder, RecEncoder_DeepFM, RecEncoder_PNN, RecEncoder_DCNv2, \
-    RecEncoder_AutoInt, RecEncoder_xDeepFM, RecEncoder_DCN, RecEncoder
+from layers.modules_pretrain_modal import (RecEncoder, RecEncoder_AutoInt,
+                                           RecEncoder_DCN, RecEncoder_DCNv2,
+                                           RecEncoder_DeepFM, RecEncoder_PNN,
+                                           RecEncoder_xDeepFM, TextEncoder)
 
 
 class bertCTRModel(nn.Module):
@@ -232,7 +234,7 @@ class bertCTRModel(nn.Module):
         modal_align_loss = self.rec_encoder(text_features_list1, batch['rec_data'])  # modal
         # Compute total loss
         # total_loss = domain_inner_loss*domain_inner_loss+domain_in_cross_regulation_loss* domain_in_cross_regulation_loss
-        total_loss = [domain_inner_loss, domain_in_cross_regulation_loss, modal_align_loss]
+        total_loss = [domain_inner_loss, domain_in_cross_regulation_loss,modal_align_loss ]
         return total_loss
 
     def get_embedding(self, batch):

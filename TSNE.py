@@ -146,21 +146,21 @@ def main(cfg):
     # optimizer = optim.Adagrad(model.parameters(), lr=cfg.lr,eps=1e-4)
     ablation_name = 'all'
     ablation_map = {
-        'no_cross_loss': 'no_cross',
-        'no_in_cross_loss': 'no_in_cross_loss',
-        'no_in_loss': 'no_in_loss',
-        'no_modal': 'no_modal',
-        'all': 'all'
+        'just_cross_loss': 'just_cross',
+        'just_in_cross_loss': 'just_in_cross',
+        'just_in_loss': 'just_in',
+        'just_modal': 'just_modal_TSNE',
+        'all': 'final',
+        'no': 'no'
     }
 
     # 获取模型名称，若不存在则返回默认值'all'
     model_name = ablation_map.get(ablation_name, 'all')
+    if model_name != 'no':
+        model_path = f'ckpts/ablation/movielens/distilbert/{model_name}.pth'
 
-    # 定义模型路径
-    model_path = f'ckpts/ablation/movielens/distilbert/{model_name}.pth'
-
-    # 加载模型参数，关闭严格模式以防止某些键不匹配的错误
-    model.load_state_dict(torch.load(model_path), strict=False)
+        # 加载模型参数，关闭严格模式以防止某些键不匹配的错误
+        model.load_state_dict(torch.load(model_path), strict=False)
     no_grad_params = {'text_encoder.model.pooler.dense.weight',
                       'text_encoder.model.pooler.dense.bias'}  # 冻结 accelerate需要有梯度
     for name, param in model.named_parameters():
@@ -229,8 +229,8 @@ def main(cfg):
                         color=palette[1], marker='s', label='Rec Features', alpha=0.8)
 
         plt.title(f"t-SNE {ablation_name}")
-        plt.xlabel("t-SNE Component 1")
-        plt.ylabel("t-SNE Component 2")
+        plt.xlabel("x")
+        plt.ylabel("y")
         plt.legend()
         plt.show()
 

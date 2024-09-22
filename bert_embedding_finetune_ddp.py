@@ -13,22 +13,22 @@ from models.LLM_CTR_finetune_model import bertCTRModel
 from preprocessing.inputs import SparseFeat
 
 warnings.filterwarnings("ignore")
+import datetime
+import json
+import logging
+
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import log_loss, roc_auc_score
-
-from transformers import AutoTokenizer, BertTokenizer
-from tqdm import tqdm
-from utils import EarlyStopping
-
-from torch.utils.data import DataLoader
 from accelerate import Accelerator
-from accelerate.utils import set_seed
-import datetime
-import json
 from accelerate.logging import get_logger
-import logging
+from accelerate.utils import set_seed
+from sklearn.metrics import log_loss, roc_auc_score
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import AutoTokenizer, BertTokenizer
+
+from utils import EarlyStopping
 
 
 def process_struct_data(data_source, train, val, test, data):
@@ -179,7 +179,7 @@ def main(cfg):
 
     # ======================================================================
     # initialize accelerator and auto move data/model to accelerator.device
-    model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final.pth'), strict=False)
+    # model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final.pth'), strict=False)
     no_grad_params = {'text_encoder.model.pooler.dense.weight',
                       'text_encoder.model.pooler.dense.bias'}  # 冻结 accelerate需要有梯度
     for name, param in model.named_parameters():
@@ -193,42 +193,41 @@ def main(cfg):
     loss_list = []
     for epoch in range(cfg.epochs):
         model.train()
-        pbar = tqdm(enumerate(train_loader), total=len(train_loader), disable=(not accelerator.is_local_main_process),
-                    ncols=100)
-        train_loss_list = []
-        for batch_idx, (batch) in pbar:
+        train_loss = 0.0
+        pbar = tqdm(train_loader, disable=(not accelerator.is_local_main_process), ncols=100)
+        
+        for batch in pbar:
             optimizer.zero_grad()
-
+            
             label = batch['label'].float().to(accelerator.device)
-            output = model(batch)
-            output = output.squeeze(1)
-            # focalLoss = FocalLoss()
-            # loss = focalLoss(output, label)
-            loss_fnc = BCEWithLogitsLoss()
-            loss = loss_fnc(output, label)
+            output = model(batch).squeeze(1)
+            
+            loss = F.binary_cross_entropy_with_logits(output, label)
             accelerator.backward(loss)
-            # print_gradients(model)
             optimizer.step()
-
+            
+            train_loss += loss.item()
+            
             pbar.set_description(
-                f"epoch {epoch + 1} : train loss1 {loss.item():.5f},lr1:{optimizer.param_groups[0]['lr']:.5f},lr2:{optimizer.param_groups[1]['lr']:.5f}"
+                f"epoch {epoch + 1}: loss {loss.item():.5f}, "
+                f"lr1 {optimizer.param_groups[0]['lr']:.5f}, "
+                f"lr2 {optimizer.param_groups[1]['lr']:.5f}"
             )
-            train_loss_list.append(loss)
+        
         scheduler.step()
-        val_logloss, val_auc = validate(test_loader, model)  # 验证
+        avg_train_loss = train_loss / len(train_loader)
+        val_logloss, val_auc = validate(test_loader, model)
+        
         auc_list.append(val_auc)
         loss_list.append(val_logloss)
-        # plt.plot(train_loss_list)
         early_stopping(val_auc)
         if early_stopping.early_stop:
-            print("Early stopping")
+            print("提前停止")
             break
-        # ======================================================================
+    
     accelerator.wait_for_everyone()
     if accelerator.is_local_main_process:
         log_results(model, min(loss_list), max(auc_list), cfg)
-        # logloss, auc = test(test_loader, model)  # 测试
-        pass
 
 
 def validate(val_loader, model):
@@ -285,12 +284,15 @@ def test(test_loader, model):
 
 def log_results(model, logloss, auc, cfg):
     model_name = model.__class__.__name__
-    file_path = f'./baseline_results/{cfg.dataset}_{model_name}.csv'
+    file_path = f'./baseline_results/{cfg.backbone}/{cfg.llm}_{cfg.dataset}.csv'
+
+    # 检查目录是否存在，如果不存在则创建
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
     headers = [
-        "Timestamp", "Model Name", "LLM", "Backbone", "Epochs", "Batch Size",
-        "Learning Rate", "Dropout", "Trainable", "Temperature", "LR1", "LR2",
-        "Optimizer", "AUC", "Logloss", "Description"
+        "时间戳", "模型名称", "LLM", "骨干网络", "训练轮数", "批次大小",
+        "学习率", "Dropout", "可训练", "温度", "LR1", "LR2",
+        "优化器", "AUC", "对数损失", "描述"
     ]
 
     row_data = [
@@ -313,14 +315,14 @@ def log_results(model, logloss, auc, cfg):
     ]
 
     file_exists = os.path.isfile(file_path)
-
+    
     with open(file_path, mode='a', newline='') as file:
         writer = csv.writer(file)
         if not file_exists:
             writer.writerow(headers)
         writer.writerow(row_data)
 
-    print(f"Results logged to {file_path}")
+    print(f"结果已记录到 {file_path}")
 
 
 if __name__ == '__main__':

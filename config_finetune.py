@@ -1,96 +1,92 @@
 import argparse
-from utils import str2bool
 import json
+from typing import Dict, Any
+
+from utils import str2bool
 
 
-def create_parser():
-    parser = argparse.ArgumentParser(description="Configuration parser for ML project")
+def create_parser() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="配置解析器")
 
-    # Add arguments with more descriptive help messages and appropriate types
-    parser.add_argument("--seed", type=int, default=3407, help="Random seed for reproducibility")
-    parser.add_argument("--ckpt_dir", type=str, default="ckpts/", help="Directory to save checkpoints")
-    parser.add_argument("--ckpt_path", type=str, default="checkpoint.pt", help="Checkpoint file name")
-    parser.add_argument("--sample", type=str2bool, default=False, help="Whether to sample the dataset")
-    parser.add_argument("--trainable", type=str2bool, default=True, help="Whether the model is trainable")
-    parser.add_argument("--lora", type=str2bool, default=False, help="Whether use LoRA")
-    parser.add_argument("--mixed_precision", type=str, default="bf16", choices=["no", "fp16", "bf16"],
-                        help="Mixed precision training mode")
-    parser.add_argument("--dataset", type=str, default="movielens", choices=["movielens", "bookcrossing", "amazon"],
-                        help="Dataset name")
-    parser.add_argument("--backbone", type=str, default="DCNv2", help="Backbone model architecture")
-    parser.add_argument("--llm", type=str, default="distilbert",
-                        choices=["distilbert", "bert", "roberta", "roberta-large", "SFR"], help="Language model to use")
-    parser.add_argument("--describe", type=str, default="设备3", help="Description of the experiment")
-    parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer for training")
-    # Training hyperparameters
-    parser.add_argument("--batch_size", type=int, default=256, help="Batch size for training")
-    parser.add_argument("--embedding_dim", type=int, default=32, help="Dimension of embeddings")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
-    parser.add_argument("--patience", type=int, default=3, help="Patience for early stopping")
-    parser.add_argument("--delta", type=float, default=0, help="Minimum change to qualify as improvement")
-    parser.add_argument("--dropout", type=float, default=0.0, help="Dropout rate")
+    # 基本参数
+    parser.add_argument("--seed", type=int, default=3407, help="随机种子")
+    parser.add_argument("--ckpt_dir", type=str, default="ckpts/", help="检查点保存目录")
+    parser.add_argument("--ckpt_path", type=str, default="checkpoint.pt", help="检查点文件名")
+    parser.add_argument("--sample", type=str2bool, default=False, help="是否采样数据集")
+    parser.add_argument("--trainable", type=str2bool, default=True, help="模型是否可训练")
+    parser.add_argument("--lora", type=str2bool, default=False, help="是否使用LoRA")
+    parser.add_argument("--mixed_precision", type=str, default="bf16", choices=["no", "fp16", "bf16"], help="混合精度训练模式")
+    parser.add_argument("--dataset", type=str, default="movielens", choices=["movielens", "bookcrossing", "amazon"], help="数据集名称")
+    parser.add_argument("--backbone", type=str, default="DCNv2", help="骨干网络架构")
+    parser.add_argument("--llm", type=str, default="tinybert", choices=["distilbert", "bert", "roberta", "roberta-large", "tinybert"], help="语言模型")
+    parser.add_argument("--describe", type=str, default="temp", help="实验描述")
+    parser.add_argument("--optimizer", type=str, default="Adam", help="优化器")
 
-    parser.add_argument("--lr1", type=float, default=5e-3, help="Learning rate for optimizer 1")
-    parser.add_argument("--lr2", type=float, default=1e-4, help="Learning rate for optimizer 2")
-    parser.add_argument("--weight_decay", type=float, default=1e-3, help="Weight decay for regularization")
-    parser.add_argument("--num_workers", type=int, default=8, help="Number of workers for data loading")
-    parser.add_argument("--t", type=float, default=0.3, help="Learning rate for optimizer 1")
-    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate for optimizer 1")
-
+    # 训练超参数
+    parser.add_argument("--batch_size", type=int, default=256, help="批次大小")
+    parser.add_argument("--embedding_dim", type=int, default=32, help="嵌入维度")
+    parser.add_argument("--epochs", type=int, default=20, help="训练轮数")
+    parser.add_argument("--patience", type=int, default=3, help="早停耐心值")
+    parser.add_argument("--delta", type=float, default=0, help="最小改进阈值")
+    parser.add_argument("--dropout", type=float, default=0.0, help="Dropout率")
+    parser.add_argument("--lr1", type=float, default=1e-3, help="优化器1学习率")
+    parser.add_argument("--lr2", type=float, default=1e-4, help="优化器2学习率")
+    parser.add_argument("--weight_decay", type=float, default=1e-3, help="权重衰减")
+    parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
+    parser.add_argument("--t", type=float, default=0.3, help="温度参数")
+    parser.add_argument("--lr", type=float, default=1e-3, help="学习率")
 
     args = parser.parse_args()
 
-    # Set paths
+    # 设置路径
     args.load_prefix_path = "./"
     args.output_prefix_path = './'
 
-    # Dataset-specific configurations
-    dataset_configs = {
+    # 数据集配置
+    dataset_configs: Dict[str, Dict[str, Any]] = {
         'movielens': {
-            'data_path': args.load_prefix_path + "data/ml-1m/",
+            'data_path': f"{args.load_prefix_path}data/ml-1m/",
             'max_length': 30,
-            'text_path': args.load_prefix_path + "data/ml-1m/"+"text_data.csv",
-            'struct_path': args.load_prefix_path + "data/ml-1m/"+"struct_data.csv"
+            'text_path': f"{args.load_prefix_path}data/ml-1m/text_data.csv",
+            'struct_path': f"{args.load_prefix_path}data/ml-1m/struct_data.csv"
         },
         'bookcrossing': {
-            'data_path': args.load_prefix_path + "data/bookcrossing/",
+            'data_path': f"{args.load_prefix_path}data/bookcrossing/",
             'max_length': 100,
-            'text_path': args.load_prefix_path + "data/bookcrossing/"+"text_data_shuffle_lower.csv",
-            'struct_path': args.load_prefix_path + "data/bookcrossing/"+"struct_data2_shuffle.csv"
+            'text_path': f"{args.load_prefix_path}data/bookcrossing/text_data_shuffle_lower.csv",
+            'struct_path': f"{args.load_prefix_path}data/bookcrossing/struct_data2_shuffle.csv"
         },
         'amazon': {
-            'data_path': args.load_prefix_path + "data/amazon/",
-            'text_path': args.load_prefix_path + "data/amazon/" + "text_data.csv",
-            'struct_path': args.load_prefix_path + "data/amazon/" + "struct2.csv",
+            'data_path': f"{args.load_prefix_path}data/amazon/",
+            'text_path': f"{args.load_prefix_path}data/amazon/text_data.csv",
+            'struct_path': f"{args.load_prefix_path}data/amazon/struct2.csv",
             'max_length': 100
         }
     }
 
-    # Set dataset-specific configurations
+    # 设置数据集特定配置
     config = dataset_configs.get(args.dataset, {})
     for key, value in config.items():
         setattr(args, key, value)
 
-    # Set common paths
-    args.meta_path = args.data_path + 'meta.json'
+    # 设置通用路径
+    args.meta_path = f"{args.data_path}meta.json"
 
-    # Language model configurations
-    llm_configs = {
+    # 语言模型配置
+    llm_configs: Dict[str, Dict[str, Any]] = {
         'distilbert': {'model': "distilbert-base-uncased", 'dim': 768},
+        'tinybert': {'model': "huawei-noah/TinyBERT_General_4L_312D", 'dim': 384},
+        'opt': {'model': "facebook/opt-1.3b", 'dim': 2048},
         'bert': {'model': "bert-base-uncased", 'dim': 768},
         'roberta': {'model': "roberta-base", 'dim': 768},
         'roberta-large': {'model': "roberta-large", 'dim': 1024},
         'SFR': {'model': "SFR-Embedding-Mistral", 'dim': 4096}
     }
 
-    # Set language model configurations
+    # 设置语言模型配置
     llm_config = llm_configs.get(args.llm, {})
-    args.text_encoder_model = args.load_prefix_path + f"pretrained_models/{llm_config['model']}/"
+    args.text_encoder_model = f"{args.load_prefix_path}pretrained_models/{llm_config['model']}/"
     args.text_tokenizer = args.text_encoder_model
     args.text_embedding_dim = llm_config['dim']
-
-
-    # Print all arguments
-    # print(json.dumps(vars(args), indent=2))
 
     return args
