@@ -37,12 +37,12 @@ def process_struct_data(data_source, train, val, test, data):
         'movielens': ['user_id', 'movie_id', 'gender', 'age', 'occupation', 'zip', 'title', 'genres'],
         'bookcrossing': ['userId', 'ISBN', 'bookTitle', 'bookAuthor', 'yearOfPublication', 'location', 'publisher',
                          'age'],
-        'amazon': ['user_id', 'item_id', 'category', 'brand', 'title',]
+        'amazon': ['user_id', 'item_id', 'category', 'brand', 'title', ]
     }[data_source]
     sparse_features_text = {
         'movielens': ['gender', 'age', 'occupation', 'zip', 'title', 'genres'],
         'bookcrossing': ['bookTitle', 'bookAuthor', 'yearOfPublication', 'location', 'publisher', 'age'],
-        'amazon': ['category', 'brand', 'title',]
+        'amazon': ['category', 'brand', 'title', ]
     }[data_source]
 
     sparse_feature_columns = [SparseFeat(feat, data[feat].nunique(), embedding_dim=embedding_dim)
@@ -196,21 +196,26 @@ def main(cfg):
         for batch_idx, batch in pbar:
             optimizer.zero_grad()
             loss_list = model(batch, "train")
-            loss = sum(x ** 2 for x in loss_list)
+            loss = sum(x for x in loss_list)
             accelerator.backward(loss)
             optimizer.step()
 
             train_loss += loss.item()
-            pbar.set_description(
-                f"轮次 {epoch + 1}: 约束损失 {loss_list[0].item():.5f}"
-            )
+            # Ensure loss_list has at least three elements and each element is a tensor
+            if len(loss_list) >= 3 and all(isinstance(loss, torch.Tensor) for loss in loss_list):
+                pbar.set_description(
+                    f"epoch {epoch + 1}: loss0 {loss_list[0].item():.5f}, loss1 {loss_list[1].item():.5f}, loss2 {loss_list[2].item():.5f}")
+            else:
+                raise ValueError("loss_list must contain at least three tensor elements.")
+
         avg_train_loss = train_loss / len(train_loader)
         logger.info(f"轮次 {epoch + 1} 平均训练损失: {avg_train_loss:.5f}")
     accelerator.wait_for_everyone()
     unwrap_model = accelerator.unwrap_model(model)
     save_dir = f'ckpts/ablation/{cfg.dataset}/{cfg.llm}'
     os.makedirs(save_dir, exist_ok=True)
-    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'final.pth'))
+    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'final_paper.pth'))
+
 
 def validate(val_loader, model):
     model.eval()
@@ -219,22 +224,22 @@ def validate(val_loader, model):
     with torch.no_grad():
         for batch in val_loader:
             batch = {key: value.to(accelerator.device) for key, value in batch.items()}
-            
+
             label = batch['label'].float()
             output = model(batch, "test")[0].squeeze(1)
-            
+
             label_list.append(label)
             pres_list.append(output)
 
     label_tensor = torch.cat(label_list)
     pres_tensor = torch.cat(pres_list)
-    
+
     label_numpy = label_tensor.cpu().numpy()
     pres_numpy = pres_tensor.cpu().numpy()
-    
+
     label_numpy = np.expand_dims(label_numpy, axis=1)
     pres_numpy = np.expand_dims(pres_numpy, axis=1)
-    
+
     logloss = round(log_loss(label_numpy, pres_numpy), 4)
     auc = round(roc_auc_score(label_numpy, pres_numpy), 4)
 
@@ -253,16 +258,16 @@ def test(test_loader, model):
             batch = {key: value.to(accelerator.device) for key, value in batch.items()}
             label = batch['label'].float()
             output = model(batch, "test")[0].squeeze(1)
-            
+
             label_list.append(label)
             pres_list.append(output)
 
     label_tensor = torch.cat(label_list)
     pres_tensor = torch.cat(pres_list)
-    
+
     label_numpy = label_tensor.cpu().numpy()
     pres_numpy = pres_tensor.cpu().numpy()
-    
+
     logloss = round(log_loss(label_numpy, pres_numpy), 6)
     auc = round(roc_auc_score(label_numpy, pres_numpy), 6)
 
@@ -276,7 +281,7 @@ def test(test_loader, model):
 def log_results(model, logloss, auc):
     model_name = model.__class__.__name__
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     result_data = {
         "时间戳": current_time,
         "模型名称": model_name,
@@ -297,14 +302,14 @@ def log_results(model, logloss, auc):
     }
 
     file_path = f'./baseline_results/ablation/{cfg.dataset}_{model_name}.csv'
-    
+
     df = pd.DataFrame([result_data])
-    
+
     if not os.path.isfile(file_path):
         df.to_csv(file_path, index=False, mode='w')
     else:
         df.to_csv(file_path, index=False, mode='a', header=False)
-    
+
     logger.info(f"结果已保存到 {file_path}")
 
 

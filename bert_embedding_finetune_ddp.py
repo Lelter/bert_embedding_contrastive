@@ -179,7 +179,7 @@ def main(cfg):
 
     # ======================================================================
     # initialize accelerator and auto move data/model to accelerator.device
-    # model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final.pth'), strict=False)
+    model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final.pth'), strict=False)
     no_grad_params = {'text_encoder.model.pooler.dense.weight',
                       'text_encoder.model.pooler.dense.bias'}  # 冻结 accelerate需要有梯度
     for name, param in model.named_parameters():

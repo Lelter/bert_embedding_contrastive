@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="Training script with various hyper
 parser.add_argument('--dataset', type=str, default='bookcrossing', choices=['movielens', 'bookcrossing', 'amazon'])
 parser.add_argument('--backbone', type=str, default='AutoInt',
                     choices=['DeepFM', 'AutoInt', 'DCNv2', 'DCN', 'xDeepFM', 'PNN', 'widedeep'])
-parser.add_argument('--llm', type=str, default='roberta', choices=['bert', 'distilbert', 'roberta', 'tinybert'])
+parser.add_argument('--llm', type=str, default='roberta')
 parser.add_argument('--epochs', type=int, default=20)
 args = parser.parse_args()
 
@@ -22,19 +22,19 @@ PREFIX = f'/home/yutao/.conda/envs/FLIP/bin/python -m torch.distributed.launch -
 
 # Hyperparameters
 hyperparameters = {
-    'optimizer': ['AdamW'],
+    'optimizer': ['Adam','AdamW'],
     # 'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     # 'temperature': [0.3],
-    'llm':['distilbert'],
+    'llm':['smallbert'],
     'lr1': [1e-3,],
     'lr2': [1e-4],
     'batch_size': [256],
     'epochs': [args.epochs],
     'dataset': ['movielens'],#'bookcrossing',
-    'backbone': ['DCNv2','DCN','DeepFM'],#,, 'AutoInt','xDeepFM', 'PNN', 'widedeep','DeepFM','DCNv2',
+    'backbone': ['DCN'],#,, 'AutoInt','xDeepFM', 'PNN', 'widedeep','DeepFM','DCNv2',
     'trainable': ['True'],
     'lora': ['False'],
-    'describe':["w/o all"]
+    'describe':["相容性"]
 }
 
 

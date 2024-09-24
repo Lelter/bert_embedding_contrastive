@@ -212,36 +212,17 @@ class RecEncoder_DeepFM(BaseModel):
 
 class RecEncoder_DCNv2(BaseModel):
     def __init__(self, sparse_feature_columns,
-                 sparse_all_feature_columns, total_feature_num, cross_num=2,
-                 dnn_hidden_units=(300, 300, 128), l2_reg_linear=0.00001,
-                 l2_reg_embedding=0.00001, l2_reg_cross=0.00001, l2_reg_dnn=0, init_std=0.0001, seed=2024,
-                 dnn_dropout=0, low_rank=32, num_experts=4,
-                 dnn_activation='relu', dnn_use_bn=False, task='binary', device='cpu', gpus=None):
+                 sparse_all_feature_columns, total_feature_num,t3,
+                 l2_reg_embedding=0.00001, init_std=0.0001, seed=2024,
+ task='binary', device='cpu', gpus=None ):
         super(RecEncoder_DCNv2, self).__init__(linear_feature_columns=sparse_feature_columns,
                                                dnn_feature_columns=sparse_all_feature_columns,
                                                total_feature_num=total_feature_num, l2_reg_embedding=l2_reg_embedding,
                                                init_std=init_std, seed=seed, task=task, device=device, gpus=gpus)
         self.out = None
         self.linear_model = None
-        # self.embedding_dict=None
-        # self.projection=nn.Linear(32*6,32)
-        # self.dnn_hidden_units = dnn_hidden_units
-        # self.cross_num = cross_num
-        # self.dnn = DNN(self.compute_input_dim(sparse_all_feature_columns), dnn_hidden_units,
-        #                activation=dnn_activation, use_bn=dnn_use_bn, l2_reg=l2_reg_dnn, dropout_rate=dnn_dropout,
-        #                init_std=init_std, device=device)
-        # if len(self.dnn_hidden_units) > 0 and self.cross_num > 0:
-        #     dnn_linear_in_feature = self.compute_input_dim(sparse_all_feature_columns) + dnn_hidden_units[-1]
-        # elif len(self.dnn_hidden_units) > 0:
-        #     dnn_linear_in_feature = dnn_hidden_units[-1]
-        # elif self.cross_num > 0:
-        #     dnn_linear_in_feature = self.compute_input_dim(sparse_all_feature_columns)
-        #
-        # self.dnn_linear = nn.Linear(dnn_linear_in_feature, 1).to(
-        #     device)
-        # self.crossnet = CrossNetMix(in_features=self.compute_input_dim(sparse_all_feature_columns),
-        #                             low_rank=low_rank, num_experts=num_experts,
-        #                             layer_num=cross_num, device=device)
+        self.t3=t3
+
 
         self.to(device)
     def get_embedding(self,text_embedding_list,dense_inputs):
@@ -322,10 +303,18 @@ class RecEncoder_DCNv2(BaseModel):
         positive_similarity = similarity_matrix.diag()
         negative_mask = ~torch.eye(similarity_matrix.size(0), dtype=bool, device=similarity_matrix.device)
         negative_similarity = similarity_matrix[negative_mask].view(similarity_matrix.size(0), -1)
+        
 
         # Calculate contrastive loss
-        loss = self.contrastive_loss(positive_similarity, negative_similarity)
-        return loss
+        loss1 = self.contrastive_loss(positive_similarity, negative_similarity,self.t3)
+        similarity_matrix2 = torch.mm(sparse_embedding, text_embedding.t())
+
+        # Get positive and negative samples
+        positive_similarity2 = similarity_matrix2.diag()
+        negative_mask2 = ~torch.eye(similarity_matrix2.size(0), dtype=bool, device=similarity_matrix2.device)
+        negative_similarity2 = similarity_matrix2[negative_mask2].view(similarity_matrix2.size(0), -1)    
+        loss2 = self.contrastive_loss(positive_similarity2, negative_similarity2,self.t3)
+        return (loss1+loss2)/2
 
     def contrastive_loss(self, positive_similarity, negative_similarity, temperature=0.3):
         """

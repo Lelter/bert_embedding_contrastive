@@ -35,6 +35,8 @@ def create_parser():
     parser.add_argument("--lr1", type=float, default=1e-3)
     parser.add_argument("--lr2", type=float, default=1e-5)
     parser.add_argument("--t", type=float, default=0.3)
+    parser.add_argument("--t1", type=float, default=0.3)
+    parser.add_argument("--t3", type=float, default=0.3)
     parser.add_argument("--step_size", type=float, default=3)
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--weight_decay", type=float, default=1e-3)
@@ -64,6 +66,18 @@ def create_parser():
         args.struct_path = args.data_path + "struct2.csv"
     args.feat_count_path = args.data_path + 'feat_count.pt'
     args.meta_path = args.data_path + 'meta.json'
+    if args.llm == 'smallbert':
+        args.text_encoder_model = args.load_prefix_path + "pretrained_models/prajjwal1/bert-small/"
+        args.text_tokenizer = args.load_prefix_path + "pretrained_models/prajjwal1/bert-small/"
+        args.text_embedding_dim = 512
+    if args.llm == 'mediumbert':
+        args.text_encoder_model = args.load_prefix_path + "pretrained_models/prajjwal1/bert-medium/"
+        args.text_tokenizer = args.load_prefix_path + "pretrained_models/prajjwal1/bert-medium/"
+        args.text_embedding_dim = 512
+    if args.llm == 'largebert':
+        args.text_encoder_model = args.load_prefix_path + "pretrained_models/google-bert/bert-large-uncased/"
+        args.text_tokenizer = args.load_prefix_path + "pretrained_models/google-bert/bert-large-uncased/"
+        args.text_embedding_dim = 1024
     if args.llm == 'distilbert':
         args.text_encoder_model = args.load_prefix_path + "pretrained_models/distilbert-base-uncased/"
         args.text_tokenizer = args.load_prefix_path + "pretrained_models/distilbert-base-uncased/"

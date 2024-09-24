@@ -18,7 +18,7 @@ def create_parser() -> argparse.Namespace:
     parser.add_argument("--mixed_precision", type=str, default="bf16", choices=["no", "fp16", "bf16"], help="混合精度训练模式")
     parser.add_argument("--dataset", type=str, default="movielens", choices=["movielens", "bookcrossing", "amazon"], help="数据集名称")
     parser.add_argument("--backbone", type=str, default="DCNv2", help="骨干网络架构")
-    parser.add_argument("--llm", type=str, default="tinybert", choices=["distilbert", "bert", "roberta", "roberta-large", "tinybert"], help="语言模型")
+    parser.add_argument("--llm", type=str, default="tinybert", help="语言模型")
     parser.add_argument("--describe", type=str, default="temp", help="实验描述")
     parser.add_argument("--optimizer", type=str, default="Adam", help="优化器")
 
@@ -72,10 +72,13 @@ def create_parser() -> argparse.Namespace:
     # 设置通用路径
     args.meta_path = f"{args.data_path}meta.json"
 
-    # 语言模型配置
+    # 语言模型配置/data/yyt/bert_embedding_contrastive/bert_embedding_contrastive/pretrained_models/prajjwal1/bert-small/
     llm_configs: Dict[str, Dict[str, Any]] = {
         'distilbert': {'model': "distilbert-base-uncased", 'dim': 768},
+        'smallbert': {'model': "prajjwal1/bert-small", 'dim': 512},
+        'mediumbert': {'model': "prajjwal1/bert-medium", 'dim': 512},
         'tinybert': {'model': "huawei-noah/TinyBERT_General_4L_312D", 'dim': 384},
+        'largebert': {'model': "google-bert/bert-large-uncased", 'dim': 1024},
         'opt': {'model': "facebook/opt-1.3b", 'dim': 2048},
         'bert': {'model': "bert-base-uncased", 'dim': 768},
         'roberta': {'model': "roberta-base", 'dim': 768},
