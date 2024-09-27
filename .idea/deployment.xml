@@ -45,6 +45,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="yutao@172.31.233.10:22 agent">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="yutao@172.31.233.199:22">
         <serverdata>
           <mappings>

@@ -13,7 +13,7 @@ parser.add_argument('--dataset', type=str, default='bookcrossing', choices=['mov
 parser.add_argument('--backbone', type=str, default='AutoInt',
                     choices=['DeepFM', 'AutoInt', 'DCNv2', 'DCN', 'xDeepFM', 'PNN', 'widedeep'])
 parser.add_argument('--llm', type=str, default='roberta')
-parser.add_argument('--epochs', type=int, default=20)
+parser.add_argument('--epochs', type=int, default=1)
 args = parser.parse_args()
 
 # Constants
@@ -22,19 +22,20 @@ PREFIX = f'/home/yutao/.conda/envs/FLIP/bin/python -m torch.distributed.launch -
 
 # Hyperparameters
 hyperparameters = {
-    'optimizer': ['Adam','AdamW'],
-    # 'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-    # 'temperature': [0.3],
-    'llm':['smallbert'],
-    'lr1': [1e-3,],
+    'optimizer': ['Adam'],
+    'embedding_dim':[16,64],
+    'gamma':[1],
+    'llm': ['distilbert'],
+    'lr1': [1e-3],
     'lr2': [1e-4],
+    't1': [0.3],
+    't3': [0.3],
     'batch_size': [256],
     'epochs': [args.epochs],
-    'dataset': ['movielens'],#'bookcrossing',
-    'backbone': ['DCN'],#,, 'AutoInt','xDeepFM', 'PNN', 'widedeep','DeepFM','DCNv2',
+    'dataset': ['bookcrossing'],  # 'bookcrossing',
+    'backbone': ['DCNv2'],  # ,, 'AutoInt','xDeepFM', 'PNN', 'widedeep','DeepFM','DCNv2',
     'trainable': ['True'],
-    'lora': ['False'],
-    'describe':["相容性"]
+    'describe': ["超参数敏感性分析"]
 }
 
 
@@ -46,9 +47,12 @@ def run_training(params):
 # Generate all combinations of hyperparameters
 param_combinations = [dict(zip(hyperparameters.keys(), values)) for values in product(*hyperparameters.values())]
 
+# Filter out combinations where alpha + beta >= 1
+# param_combinations = [params for params in param_combinations if float(params['alpha']) + float(params['beta']) < 1]
+
 # Run training for each combination
 for params in param_combinations:
     print("总共有{}个参数组合".format(len(param_combinations)))
-    print("当前参数组合:",params)
-    print("当前为第{}个参数组合".format(param_combinations.index(params)+1))
+    print("当前参数组合:", params)
+    print("当前为第{}个参数组合".format(param_combinations.index(params) + 1))
     run_training(params)

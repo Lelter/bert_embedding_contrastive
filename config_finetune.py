@@ -34,6 +34,12 @@ def create_parser() -> argparse.Namespace:
     parser.add_argument("--weight_decay", type=float, default=1e-3, help="权重衰减")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
     parser.add_argument("--t", type=float, default=0.3, help="温度参数")
+    parser.add_argument("--t1", type=float, default=0.3, help="温度参数1")
+    parser.add_argument("--alpha", type=float, default=0.3, help="FDCM")
+    parser.add_argument("--beta", type=float, default=0.3, help="FECM")
+    parser.add_argument("--gamma", type=float, default=0.3, help="FECM")
+
+    parser.add_argument("--t3", type=float, default=0.3, help="温度参数2")
     parser.add_argument("--lr", type=float, default=1e-3, help="学习率")
 
     args = parser.parse_args()

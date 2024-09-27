@@ -161,9 +161,12 @@ def main(cfg):
         raise ValueError(f"Unsupported optimizer: {cfg.optimizer}")
 
     # 定义优化器的默认参数，添加参数只需修改此处
+    # optimizer_params = [
+    #     {'params': model.rec_encoder.parameters(), 'lr': cfg.lr1},
+    #     {'params': model.text_encoder.parameters(), 'lr': cfg.lr2}
+    # ]
     optimizer_params = [
-        {'params': model.rec_encoder.parameters(), 'lr': cfg.lr1},
-        {'params': model.text_encoder.parameters(), 'lr': cfg.lr2}
+        {'params': model.parameters(), 'lr': cfg.lr1},
     ]
 
     # 处理momentum参数，对于SGD和RMSprop才需要
@@ -188,6 +191,10 @@ def main(cfg):
         train_loader, model, optimizer,
     )
 
+    best_loss = float('inf')
+    patience_counter = 0
+    t2_list = []
+
     for epoch in range(cfg.epochs):
         model.train()
         pbar = tqdm(enumerate(train_loader), total=len(train_loader), disable=(not accelerator.is_local_main_process),
@@ -195,7 +202,8 @@ def main(cfg):
         train_loss = 0.0
         for batch_idx, batch in pbar:
             optimizer.zero_grad()
-            loss_list = model(batch, "train")
+            loss_list,t2 = model(batch, "train")
+            t2_list.append(t2.item())
             loss = sum(x for x in loss_list)
             accelerator.backward(loss)
             optimizer.step()
@@ -204,17 +212,30 @@ def main(cfg):
             # Ensure loss_list has at least three elements and each element is a tensor
             if len(loss_list) >= 3 and all(isinstance(loss, torch.Tensor) for loss in loss_list):
                 pbar.set_description(
-                    f"epoch {epoch + 1}: loss0 {loss_list[0].item():.5f}, loss1 {loss_list[1].item():.5f}, loss2 {loss_list[2].item():.5f}")
+                    f"epoch {epoch + 1}: loss0 {loss_list[0].item():.5f}, loss1 {loss_list[1].item():.5f}, loss2 {loss_list[2].item():.5f} t2 {t2.item():.5f}")
             else:
-                raise ValueError("loss_list must contain at least three tensor elements.")
+                pbar.set_description(f"epoch {epoch + 1}: loss {loss.item():.5f}")
 
         avg_train_loss = train_loss / len(train_loader)
         logger.info(f"轮次 {epoch + 1} 平均训练损失: {avg_train_loss:.5f}")
+
+        # Check for loss convergence
+        if avg_train_loss < best_loss:
+            best_loss = avg_train_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+
+        if patience_counter >= cfg.patience:
+            logger.info(f"训练提前停止于轮次 {epoch + 1}，因为损失不再下降")
+            break
+
     accelerator.wait_for_everyone()
     unwrap_model = accelerator.unwrap_model(model)
     save_dir = f'ckpts/ablation/{cfg.dataset}/{cfg.llm}'
     os.makedirs(save_dir, exist_ok=True)
-    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, 'final_paper.pth'))
+    torch.save(unwrap_model.state_dict(), os.path.join(save_dir, f'final_{cfg.embedding_dim}.pth'))
+    np.save(os.path.join(save_dir, f't2.npy'),t2_list)
 
 
 def validate(val_loader, model):

@@ -221,6 +221,7 @@ class RecEncoder_DCNv2(BaseModel):
                                                init_std=init_std, seed=seed, task=task, device=device, gpus=gpus)
         self.out = None
         self.linear_model = None
+        # self.embedding_dict=None
         self.t3=t3
 
 
@@ -327,7 +328,7 @@ class RecEncoder_DCNv2(BaseModel):
         positive_similarity = torch.exp(positive_similarity / temperature)
         negative_similarity = torch.sum(torch.exp(negative_similarity / temperature), dim=1)
 
-        loss = -torch.log(positive_similarity / ( negative_similarity))
+        loss = -torch.log(positive_similarity / (positive_similarity+negative_similarity))
         return loss.mean()
 
     def forward(self, text_embedding_list, dense_inputs):

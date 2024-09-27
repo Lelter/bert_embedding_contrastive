@@ -4,10 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from layers.modules_pretrain_modal import (RecEncoder, RecEncoder_AutoInt,
-                                           RecEncoder_DCN, RecEncoder_DCNv2,
-                                           RecEncoder_DeepFM, RecEncoder_PNN,
-                                           RecEncoder_xDeepFM, TextEncoder)
+from layers.modules_pretrain_modal import (RecEncoder_DCNv2,
+                                           TextEncoder)
 
 
 class bertCTRModel(nn.Module):
@@ -22,13 +20,7 @@ class bertCTRModel(nn.Module):
         super(bertCTRModel, self).__init__()
         embedding_dim = cfg.embedding_dim
         backbone_map: Dict[str, Type[nn.Module]] = {
-            "DeepFM": RecEncoder_DeepFM,
             "DCNv2": RecEncoder_DCNv2,
-            "PNN": RecEncoder_PNN,
-            "AutoInt": RecEncoder_AutoInt,
-            "xDeepFM": RecEncoder_xDeepFM,
-            "DCN": RecEncoder_DCN,
-            "Recoder": RecEncoder
         }
 
         if cfg.backbone in backbone_map:
@@ -44,13 +36,13 @@ class bertCTRModel(nn.Module):
         if cfg.llm == "SFR":
             self.text_encoder.forward = self.text_encoder.SFR_forward
         device = self.rec_encoder.device
-        # self.t = nn.Parameter(torch.tensor(0.2, device=device), requires_grad=True)
+        self.alpha=cfg.alpha
+        self.beta=cfg.beta
         self.t1 = cfg.t1
         self.t2 = nn.Parameter(torch.tensor(1.0, device=device), requires_grad=True)
         self.t3 = cfg.t3
-        # self.a = 1
-        # self.b = 1
-        # self.c = 1
+        self.gamma=cfg.gamma
+
 
     #
     def FECM_loss(self, text_features_list1, text_features_list2):
@@ -70,11 +62,13 @@ class bertCTRModel(nn.Module):
                                           dim=-1)
 
             # 计算损失
-            pos_exp = torch.exp(sim_pos / self.t1).sum()
+            pos_exp = torch.exp(sim_pos / self.t1)
             neg_exp = torch.exp(sim_neg / self.t1).sum() - torch.exp(torch.diag(sim_neg) / self.t1).sum()
 
             # 对每个域的损失除以 batch size
-            infoNCE = infoNCE - torch.log(pos_exp / neg_exp) / batch_size
+
+            temp=torch.log(pos_exp /(pos_exp+neg_exp))
+            infoNCE = infoNCE - temp.sum() / batch_size
 
         # 返回平均损失（除以域的数量）
         return infoNCE / num_domains
@@ -135,13 +129,12 @@ class bertCTRModel(nn.Module):
 
         # Compute losses
         FECM_loss = self.FECM_loss(text_features_list1, text_features_list2)  # instance
-        # domain_cross_loss = self.domain_cross_loss_once(text_features_list1)
         FDCM_loss = self.FDCM_loss(text_features_list1)  # domain
         # Compute logits
         MCM_loss = self.rec_encoder(text_features_list1, batch['rec_data'])  # modal
         # Compute total loss
-        total_loss = [100*FECM_loss, FDCM_loss, MCM_loss]
-        return total_loss
+        total_loss = [self.alpha*FECM_loss,self.beta*FDCM_loss,self.gamma*MCM_loss, ]#FDCM_loss, MCM_loss
+        return total_loss,self.t2
 
     def get_embedding(self, batch):
         text_features_list = self.text_encoder(

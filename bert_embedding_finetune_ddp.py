@@ -179,7 +179,8 @@ def main(cfg):
 
     # ======================================================================
     # initialize accelerator and auto move data/model to accelerator.device
-    model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final.pth'), strict=False)
+    # model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final_paper.pth'), strict=False)
+    model.load_state_dict(torch.load(f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/final_{cfg.embedding_dim}.pth'), strict=False)
     no_grad_params = {'text_encoder.model.pooler.dense.weight',
                       'text_encoder.model.pooler.dense.bias'}  # 冻结 accelerate需要有梯度
     for name, param in model.named_parameters():
@@ -284,14 +285,14 @@ def test(test_loader, model):
 
 def log_results(model, logloss, auc, cfg):
     model_name = model.__class__.__name__
-    file_path = f'./baseline_results/{cfg.backbone}/{cfg.llm}_{cfg.dataset}.csv'
+    file_path = f'./baseline_results/ablation/{cfg.backbone}/{cfg.llm}_{cfg.dataset}_{cfg.embedding_dim}.csv'
 
     # 检查目录是否存在，如果不存在则创建
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
     headers = [
         "时间戳", "模型名称", "LLM", "骨干网络", "训练轮数", "批次大小",
-        "学习率", "Dropout", "可训练", "温度", "LR1", "LR2",
+        "学习率", "Dropout", "可训练", "alpha", "beta", "LR1", "LR2",
         "优化器", "AUC", "对数损失", "描述"
     ]
 
@@ -305,13 +306,14 @@ def log_results(model, logloss, auc, cfg):
         cfg.lr,
         cfg.dropout,
         cfg.trainable,
-        cfg.t,
+        cfg.alpha,
+        cfg.beta,
         cfg.lr1,
         cfg.lr2,
         cfg.optimizer,
         auc,
         logloss,
-        cfg.describe
+        f"{cfg.alpha}_{cfg.beta}_{cfg.lr1}_{cfg.lr2}"
     ]
 
     file_exists = os.path.isfile(file_path)

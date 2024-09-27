@@ -147,19 +147,22 @@ def main(cfg):
                          struct_feature_num=total_feature_num,
                          )
     # optimizer = optim.Adagrad(model.parameters(), lr=cfg.lr,eps=1e-4)
-    ablation_name = 'no'
+    ablation_name = 'ours'
     ablation_map = {
         'just_cross_loss': 'just_cross',
         'just_in_cross_loss': 'just_in_cross',
         'just_in_loss': 'just_in',
         'just_modal': 'just_modal_TSNE',
-        'final': 'final',
-        'no': 'no'
+        'ours': 'final_paper',
+        'origin': 'origin',
+        'only FECM': 'just_FECM',
+        'only FDCM': 'just_FDCM',
+        'only MCM': 'just_MCM',
     }
 
     # 获取模型名称，若不存在则返回默认值'all'
     model_name = ablation_map.get(ablation_name, 'all')
-    if model_name != 'no':
+    if model_name != 'origin':
         model_path = f'ckpts/ablation/{cfg.dataset}/{cfg.llm}/{model_name}.pth'
 
         # 加载模型参数，关闭严格模式以防止某些键不匹配的错误
@@ -222,7 +225,7 @@ def main(cfg):
         plt.rcParams['figure.facecolor'] = 'none'
 
         # 使用更优雅的颜色方案
-        palette = sns.color_palette(["#e74d4a","#4b65e3"])
+        palette = sns.color_palette(["#e8760d","#1c6fa1"])
 
         # 绘制散点图，调整点的大小和透明度
         scatter_text = plt.scatter(features_2d[labels == 0, 0], features_2d[labels == 0, 1],
@@ -234,9 +237,9 @@ def main(cfg):
         plt.title(f"t-SNE  - {ablation_name}", fontsize=20, fontweight='bold')
         plt.xlabel("t-SNE x", fontsize=14)
         plt.ylabel("t-SNE y", fontsize=14)
-        plt.xticks([])
-        plt.yticks([])
-        plt.axis('off')
+        # plt.xticks([])
+        # plt.yticks([])
+        # plt.axis('off')
         # 添加图例
         plt.legend(fontsize=16)
 
